@@ -32,13 +32,24 @@
   .row:first-of-type { border-top: none; }
   .row label { flex: 1; font-size: 15px; color: #1C1C1E; }
   .row input {
-    width: 100px; text-align: right; border: 1px solid #E5E5EA;
+    width: 90px; text-align: right; border: 1px solid #E5E5EA;
     border-radius: 6px; outline: none;
     font-size: 15px; color: #1C1C1E; background: #F9F9F9;
     padding: 6px 8px; font-family: inherit;
   }
   .row input:focus { border-color: #1565C0; background: white; }
-  .row .unit { font-size: 13px; color: #8E8E93; min-width: 55px; }
+  .row .unit { font-size: 13px; color: #8E8E93; min-width: 50px; }
+
+  /* miles / km toggle */
+  .toggle {
+    display: flex; border: 1px solid #1565C0;
+    border-radius: 8px; overflow: hidden; flex-shrink: 0;
+  }
+  .toggle button {
+    padding: 6px 14px; font-size: 13px; font-family: inherit;
+    border: none; cursor: pointer; background: white; color: #1565C0;
+  }
+  .toggle button.active { background: #1565C0; color: white; }
 
   .result-row {
     display: flex; align-items: center;
@@ -86,13 +97,17 @@
   </div>
   <div class="row">
     <label>Distance</label>
-    <input id="miles" type="number" inputmode="decimal" placeholder="e.g. 60" value="60">
-    <span class="unit">miles</span>
+    <input id="dist" type="number" inputmode="decimal" placeholder="e.g. 60" value="60">
+    <span class="unit" id="dist-unit">miles</span>
+    <div class="toggle">
+      <button id="btn-miles" class="active" onclick="setUnit('miles')">miles</button>
+      <button id="btn-km"                   onclick="setUnit('km')">km</button>
+    </div>
   </div>
   <div class="row">
     <label>Consumption</label>
     <input id="cons" type="number" inputmode="decimal" placeholder="e.g. 7.3" value="7.3">
-    <span class="unit">L / 100km</span>
+    <span class="unit">L/100km</span>
   </div>
 </div>
 
@@ -101,9 +116,9 @@
 <div class="section-title">Results</div>
 <div class="card">
   <div class="result-row">
-    <label>Distance (km)</label>
+    <label id="lbl-km">Distance (km)</label>
     <span class="result-val" id="res-km">—</span>
-    <span class="result-unit">km</span>
+    <span class="result-unit" id="unit-km">km</span>
   </div>
   <div class="result-row">
     <label>Fuel used</label>
@@ -125,13 +140,33 @@
 <button class="btn-clear" onclick="clearAll()">Clear all</button>
 
 <script>
+let useKm = false;
+
+function setUnit(unit) {
+  useKm = (unit === 'km');
+  document.getElementById('btn-miles').className = useKm ? '' : 'active';
+  document.getElementById('btn-km').className    = useKm ? 'active' : '';
+  document.getElementById('dist-unit').textContent = useKm ? 'km' : 'miles';
+
+  // update results label
+  if (useKm) {
+    document.getElementById('lbl-km').textContent  = 'Distance (miles)';
+    document.getElementById('unit-km').textContent = 'miles';
+  } else {
+    document.getElementById('lbl-km').textContent  = 'Distance (km)';
+    document.getElementById('unit-km').textContent = 'km';
+  }
+
+  calculate();
+}
+
 function calculate() {
-  const price = parseFloat(document.getElementById("price").value);
-  const miles = parseFloat(document.getElementById("miles").value);
-  const cons  = parseFloat(document.getElementById("cons").value);
+  const price  = parseFloat(document.getElementById("price").value);
+  const dist   = parseFloat(document.getElementById("dist").value);
+  const cons   = parseFloat(document.getElementById("cons").value);
   const errBox = document.getElementById("error-box");
 
-  if (isNaN(price) || isNaN(miles) || isNaN(cons)) {
+  if (isNaN(price) || isNaN(dist) || isNaN(cons)) {
     errBox.textContent = "Please enter valid numbers in all fields";
     errBox.className = "error-box visible";
     ["res-km","res-litres","res-mpg"].forEach(id => document.getElementById(id).textContent = "—");
@@ -141,25 +176,28 @@ function calculate() {
 
   errBox.className = "error-box";
 
-  const km     = miles * 1.60934;
+  const km     = useKm ? dist : dist * 1.60934;
+  const miles  = useKm ? dist / 1.60934 : dist;
   const litres = (cons / 100) * km;
   const cost   = (litres * price) / 100;
   const mpg    = 282.481 / cons;
 
-  document.getElementById("res-km").textContent     = km.toFixed(1);
+  // show the converted distance
+  const converted = useKm ? miles : km;
+  document.getElementById("res-km").textContent     = converted.toFixed(1);
   document.getElementById("res-litres").textContent = litres.toFixed(2);
   document.getElementById("res-mpg").textContent    = mpg.toFixed(1);
   document.getElementById("cost-big").textContent   = "£" + cost.toFixed(2);
 }
 
 function clearAll() {
-  ["price","miles","cons"].forEach(id => document.getElementById(id).value = "");
+  ["price","dist","cons"].forEach(id => document.getElementById(id).value = "");
   ["res-km","res-litres","res-mpg"].forEach(id => document.getElementById(id).textContent = "—");
   document.getElementById("cost-big").textContent = "—";
   document.getElementById("error-box").className = "error-box";
 }
 
-["price","miles","cons"].forEach(id => {
+["price","dist","cons"].forEach(id => {
   document.getElementById(id).addEventListener("input", calculate);
   document.getElementById(id).addEventListener("blur",  calculate);
 });
